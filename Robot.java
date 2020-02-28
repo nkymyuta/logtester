@@ -31,10 +31,13 @@ public class Robot extends TimedRobot {
   private XboxController m_xbox;
   //private JoystickButton m_button;
   
+ //砲台
   WPI_TalonSRX m_Talon;
  
+ //シューター
   WPI_TalonSRX s_TalonLeft, s_TalonRight;
   
+ //インテイク
   WPI_VictorSPX i_Intakefront, i_Intakeback, i_Intakeroller;
 
   
