@@ -31,13 +31,10 @@ public class Robot extends TimedRobot {
   private XboxController m_xbox;
   //private JoystickButton m_button;
   
- //砲台
   WPI_TalonSRX m_Talon;
  
- //シューター
   WPI_TalonSRX s_TalonLeft, s_TalonRight;
   
- //インテイク
   WPI_VictorSPX i_Intakefront, i_Intakeback, i_Intakeroller;
 
   
@@ -69,17 +66,20 @@ public class Robot extends TimedRobot {
     public static final double CanonMaxAngle   = 80;
     public static final double CanonMinAngle   = -30;
     public static final double CanonMaxPoint   = 496;   
-    public static final double CanonMinPoint   = 162;
+    public static final double CanonMinPoint   = 167;
 
-    public static final double CanonPointError = CanonMaxAngle - CanonMinAngle;
-    public static final double CanonAngleError = CanonMaxPoint - CanonMinPoint;
+    public static final double CanonPointError = CanonMaxPoint - CanonMinPoint;
+    public static final double CanonAngleError = CanonMaxAngle - CanonMinAngle;
 
   //アームの重力オフセット最大値（角度が地面と平行であり、Cos = 1の時）
-    public static final double CanonMaxOffset = -0.13;
+    public static final double CanonMaxOffset = 0.13;
 
 
   //PIDの目標角度を代入する変数
   public double SetAngle = -30;
+
+  //PIDするかどうか
+  public boolean canonPID_ON = false;
 
   PidGain pidgain;
 
@@ -167,7 +167,7 @@ public class Robot extends TimedRobot {
                                          PidGain.kPIDLoopIdx, PidGain.kTimeoutMs);
 
     m_Talon.setSensorPhase(true);
-    //s_TalonLeft.setInverted(false)
+    m_Talon.setInverted(true);
 
     m_Talon.configNominalOutputForward(0,PidGain.kTimeoutMs);
     m_Talon.configNominalOutputReverse(0,PidGain.kTimeoutMs);
@@ -219,9 +219,10 @@ public class Robot extends TimedRobot {
     //--------------------------------------------------------------------------------------
     SmartDashboard.putBoolean("MaxDownSwitchClosed", MaxDownSwitch.isRevLimitSwitchClosed());
     SmartDashboard.putBoolean("MaxUpSwitchClosed",   MaxUpSwitch.isFwdLimitSwitchClosed());
+    SmartDashboard.putBoolean("canonPID_ON", canonPID_ON);
 
-    SmartDashboard.putBoolean("BallSensorFront",BallSensorFront.get());
-    SmartDashboard.putBoolean("BallSensorBack", BallSensorBack.get());
+    //SmartDashboard.putBoolean("BallSensorFront",BallSensorFront.get());
+    //SmartDashboard.putBoolean("BallSensorBack", BallSensorBack.get());
 
     SmartDashboard.putBoolean("GetBumper/L",m_xbox.getBumper(Hand.kLeft));
     SmartDashboard.putBoolean("GetBumper/R",m_xbox.getBumper(Hand.kRight));
@@ -236,13 +237,16 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("CanonEncoder_P",m_TalonEncoder.getAnalogInRaw());
     SmartDashboard.putNumber("CanonEncoder_V",m_TalonEncoder.getAnalogInVel());
     
-    SmartDashboard.putNumber("ShootEncoder/L_V",s_TalonEncoderLeft.getAnalogInVel());
-    SmartDashboard.putNumber("ShootEncoder/R_V",s_TalonEncoderRight.getAnalogInVel());
+    //SmartDashboard.putNumber("ShootEncoder/L_V",s_TalonEncoderLeft.getAnalogInVel());
+    //SmartDashboard.putNumber("ShootEncoder/R_V",s_TalonEncoderRight.getAnalogInVel());
  
-    SmartDashboard.putNumber("SetshooterPoint",SetSpeedPoint);
+    //SmartDashboard.putNumber("SetshooterPoint",SetSpeedPoint);
 
     SmartDashboard.putNumber("CanonNowAngle",getCanonNow(m_TalonEncoder.getAnalogInRaw()));
     SmartDashboard.putNumber("SetAngle", SetAngle);
+
+    //SetFeedForward(getCanonNow(m_TalonEncoder.getAnalogInRaw()));
+    //SmartDashboard.putNumber("FeedForwardMagni", Math.cos(Math.toRadians(getCanonNow(m_TalonEncoder.getAnalogInRaw()))));
 
     //--------------------------------------------------------------------------------------    
     /*
@@ -312,34 +316,42 @@ public class Robot extends TimedRobot {
     
     //PIDのテスト
     if(m_xbox.getBButton()){      
+      canonPID_ON = true;
       SetAngle = 0;    
     }
     else if(m_xbox.getAButton()){      
-      SetAngle = -20;
+      canonPID_ON = false;
+      ChangeBasic();
     }
-    else if(m_xbox.getXButton()){      
-      SetAngle = 50;
+    else if(m_xbox.getYButton()){      
+      canonPID_ON = true;
+      SetAngle = 30;
     }
     else{
-      
+      canonPID_ON = false;
     }
     
-    //最後に動かす  
-    CanonPIDMove(SetAngle);   
+    if(canonPID_ON == true){
+    CanonPIDMove(SetAngle, getCanonNow(m_TalonEncoder.getAnalogInRaw()));
+    }
 
   }
 
   //砲台のモーターを回すPID制御(位置をSetPoint()で決める・重力オフセットをSetFeedForward()で決める)
-  void CanonPIDMove(double TargetAngle){    
-    //動くのはスイッチが両方押されてないときのみ
-    //if(!MaxUpSwitch.isFwdLimitSwitchClosed() && !MaxDownSwitch.isRevLimitSwitchClosed()){    
+  void CanonPIDMove(double TargetAngle, double NowAngle){      
       
       m_Talon.set(ControlMode.Position, SetPoint(TargetAngle), 
-                  DemandType.ArbitraryFeedForward, SetFeedForward(getCanonNow(m_TalonEncoder.getAnalogInRaw())));
-      
-    //}else{
-    //  m_Talon.set(0);
-    //}
+                  DemandType.ArbitraryFeedForward, SetFeedForward(NowAngle));
+
+  }
+
+  //一番下に向ける
+  void ChangeBasic(){
+   
+    while(!MaxDownSwitch.isRevLimitSwitchClosed()){
+      m_Talon.set(ControlMode.PercentOutput, -0.1);
+    }
+
   }
   
   //---------------------------------------------------------------------
@@ -358,17 +370,19 @@ public class Robot extends TimedRobot {
     //(目標角度 - 最小角度) ×（エンコーダー値の最大最小差分) ÷ (角度の最大最小差分) + (0からの差分)
     double SetPoint(double TargetAngle){
       double Targetpoint;
-      Targetpoint = (TargetAngle - CanonMinAngle) * CanonMaxPoint / CanonMaxAngle + CanonMinPoint;
+      Targetpoint = (TargetAngle - CanonMinAngle) * CanonPointError / CanonAngleError + CanonMinPoint;
 
+      SmartDashboard.putNumber("TargetPoint", Targetpoint);
       return  Targetpoint;
     }
 
     //目標角度に合わせた重力オフセットを計算
     //(地面と水平な時の重力オフセット) × (cos目標角度)
-    double SetFeedForward(double TargetAngle){
+    double SetFeedForward(double NowAngle){
       double FeedForward;
-      FeedForward = CanonMaxOffset * Math.cos(Math.toRadians(TargetAngle));
+      FeedForward = CanonMaxOffset * Math.cos(Math.toRadians(NowAngle));
 
+      SmartDashboard.putNumber("TargetFeedForward", FeedForward);
       return FeedForward;
     }
 
