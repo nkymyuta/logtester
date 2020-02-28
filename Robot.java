@@ -23,6 +23,7 @@ import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 import com.ctre.phoenix.motorcontrol.SensorCollection;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.DemandType;
 
 public class Robot extends TimedRobot {
  
@@ -60,10 +61,22 @@ public class Robot extends TimedRobot {
   public static final double SetIntakeSpeed_P  = 0.4;
   public static final double SetIntakeOutSpeed_P  = 0.8;
 
+   
+  //アームの可動域の角度＆エンコーダーからの値の最大
+    public static final double CanonMaxAngle   = 80;
+    public static final double CanonMinAngle   = -30;
+    public static final double CanonMaxPoint   = 496;   
+    public static final double CanonMinPoint   = 162;
+
+    public static final double CanonPointError = CanonMaxAngle - CanonMinAngle;
+    public static final double CanonAngleError = CanonMaxPoint - CanonMinPoint;
+
+  //アームの重力オフセット最大値（角度が地面と平行であり、Cos = 1の時）
+    public static final double CanonMaxOffset = -0.13;
 
 
-
-  public int button = 3;
+  //PIDの目標角度を代入する変数
+  public double SetAngle = -30;
 
   PidGain pidgain;
 
@@ -72,7 +85,7 @@ public class Robot extends TimedRobot {
     
 //-------------------------------------------------------------------------------------
 
-   //コントローラー宣言
+  //コントローラー宣言
     m_stick = new Joystick(0);
     m_xbox  = new XboxController(1);
 
@@ -94,15 +107,14 @@ public class Robot extends TimedRobot {
     BallSensorFront = new DigitalInput(0);
     BallSensorBack = new DigitalInput(1);
 
-    s_TalonLeft.configFactoryDefault();
-    s_TalonRight.configFactoryDefault();
-
     //PID設定
     //pidgain.s_TalonLeftPIDSet(s_TalonLeft);
     //pidgain.s_TalonRightPIDSet(s_TalonRight);
 
-//-------------------------------------------------------------------------------------
+  //-------------------------------------------------------------------------------------
+  //シューターPID左
 
+        s_TalonLeft.configFactoryDefault();
         //s_TalonLeft.configOpenloopRamp(0.1);
         s_TalonLeft.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 
                                                  PidGain.kPIDLoopIdx, PidGain.kTimeoutMs);
@@ -115,13 +127,16 @@ public class Robot extends TimedRobot {
         s_TalonLeft.configPeakOutputForward(1.0,PidGain.kTimeoutMs);
         s_TalonLeft.configPeakOutputReverse(-1.0,PidGain.kTimeoutMs);
 
-        s_TalonLeft.config_kF(PidGain.kPIDLoopIdx, PidGain.kF, PidGain.kTimeoutMs);
-        s_TalonLeft.config_kP(PidGain.kPIDLoopIdx, PidGain.kP, PidGain.kTimeoutMs);
-        s_TalonLeft.config_kI(PidGain.kPIDLoopIdx, PidGain.kI, PidGain.kTimeoutMs);
-        s_TalonLeft.config_kD(PidGain.kPIDLoopIdx, PidGain.kD, PidGain.kTimeoutMs);
+        s_TalonLeft.config_kF(PidGain.kPIDLoopIdx, PidGain.shootkF, PidGain.kTimeoutMs);
+        s_TalonLeft.config_kP(PidGain.kPIDLoopIdx, PidGain.shootkP, PidGain.kTimeoutMs);
+        s_TalonLeft.config_kI(PidGain.kPIDLoopIdx, PidGain.shootkI, PidGain.kTimeoutMs);
+        s_TalonLeft.config_kD(PidGain.kPIDLoopIdx, PidGain.shootkD, PidGain.kTimeoutMs);
 
-//--------------------------------------------------------------------------------------
-        
+        s_TalonLeft.configMaxIntegralAccumulator(PidGain.kPIDLoopIdx,PidGain.shootMaxIntegralAccumulator);
+
+  //----------------------------------------------------------
+  //シューターPID右     
+        s_TalonRight.configFactoryDefault();
         //s_TalonRight.configOpenloopRamp(0.1);
         s_TalonRight.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 
                                                   PidGain.kPIDLoopIdx, PidGain.kTimeoutMs);
@@ -134,44 +149,62 @@ public class Robot extends TimedRobot {
         s_TalonRight.configPeakOutputForward(1.0,PidGain.kTimeoutMs);
         s_TalonRight.configPeakOutputReverse(-1.0,PidGain.kTimeoutMs);
 
-        s_TalonRight.config_kF(PidGain.kPIDLoopIdx, PidGain.kF, PidGain.kTimeoutMs);
-        s_TalonRight.config_kP(PidGain.kPIDLoopIdx, PidGain.kP, PidGain.kTimeoutMs);
-        s_TalonRight.config_kI(PidGain.kPIDLoopIdx, PidGain.kI, PidGain.kTimeoutMs);
-        s_TalonRight.config_kD(PidGain.kPIDLoopIdx, PidGain.kD, PidGain.kTimeoutMs);
+        s_TalonRight.config_kF(PidGain.kPIDLoopIdx, PidGain.shootkF, PidGain.kTimeoutMs);
+        s_TalonRight.config_kP(PidGain.kPIDLoopIdx, PidGain.shootkP, PidGain.kTimeoutMs);
+        s_TalonRight.config_kI(PidGain.kPIDLoopIdx, PidGain.shootkI, PidGain.kTimeoutMs);
+        s_TalonRight.config_kD(PidGain.kPIDLoopIdx, PidGain.shootkD, PidGain.kTimeoutMs);
 
-//--------------------------------------------------------------------------------------
-        
+        s_TalonRight.configMaxIntegralAccumulator(PidGain.kPIDLoopIdx,PidGain.shootMaxIntegralAccumulator);
+
+  //-------------------------------------------------------------------------------------
+  //砲台
+    m_Talon.configFactoryDefault();
+    //s_TalonLeft.configOpenloopRamp(0.1);
+    m_Talon.configSelectedFeedbackSensor(FeedbackDevice.Analog, 
+                                         PidGain.kPIDLoopIdx, PidGain.kTimeoutMs);
+
+    m_Talon.setSensorPhase(true);
+    //s_TalonLeft.setInverted(false)
+
+    m_Talon.configNominalOutputForward(0,PidGain.kTimeoutMs);
+    m_Talon.configNominalOutputReverse(0,PidGain.kTimeoutMs);
+    m_Talon.configPeakOutputForward(1.0,PidGain.kTimeoutMs);
+    m_Talon.configPeakOutputReverse(-1.0,PidGain.kTimeoutMs);
+
+    m_Talon.config_kF(PidGain.kPIDLoopIdx, PidGain.CanonkF, PidGain.kTimeoutMs);
+    m_Talon.config_kP(PidGain.kPIDLoopIdx, PidGain.CanonkP, PidGain.kTimeoutMs);
+    m_Talon.config_kI(PidGain.kPIDLoopIdx, PidGain.CanonkI, PidGain.kTimeoutMs);
+    m_Talon.config_kD(PidGain.kPIDLoopIdx, PidGain.CanonkD, PidGain.kTimeoutMs);
+
+    m_Talon.configMaxIntegralAccumulator(PidGain.kPIDLoopIdx,PidGain.shootMaxIntegralAccumulator);
+
+  //-------------------------------------------------------------------------------------
+  //変数宣言
+    SetAngle = 0;
+
   }
 
 
   @Override
   public void robotPeriodic() {
-
-
   }
 
   
   @Override
   public void autonomousInit() {
-   
   }
 
   
   @Override
   public void autonomousPeriodic() {
-    
-
   }
 
   @Override
   public void teleopInit(){
-
   }
 
   @Override
   public void disabledInit(){
-
-
   }
   /**
    * This function is called periodically during operator control.
@@ -181,12 +214,11 @@ public class Robot extends TimedRobot {
     //SetShooterPointGet = m_xbox.getY(Hand.kLeft) * SetShooterMagni;
 
     //--------------------------------------------------------------------------------------
+    SmartDashboard.putBoolean("MaxDownSwitchClosed", MaxDownSwitch.isRevLimitSwitchClosed());
+    SmartDashboard.putBoolean("MaxUpSwitchClosed",   MaxUpSwitch.isFwdLimitSwitchClosed());
 
-    SmartDashboard.putBoolean("MaxDownSwitchClosed", MaxDownSwitch.isFwdLimitSwitchClosed());
-    SmartDashboard.putBoolean("MaxUpSwitchClosed",   MaxUpSwitch.isRevLimitSwitchClosed());
-
-    SmartDashboard.putBoolean("BallSensor",BallSensorFront.get());
-    SmartDashboard.putBoolean("BallSensor", BallSensorBack.get());
+    SmartDashboard.putBoolean("BallSensorFront",BallSensorFront.get());
+    SmartDashboard.putBoolean("BallSensorBack", BallSensorBack.get());
 
     SmartDashboard.putBoolean("GetBumper/L",m_xbox.getBumper(Hand.kLeft));
     SmartDashboard.putBoolean("GetBumper/R",m_xbox.getBumper(Hand.kRight));
@@ -198,17 +230,19 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Xboxstick/Y/R",m_xbox.getY(Hand.kRight));
 
 
-    SmartDashboard.putNumber("TalonEncoder_P",m_TalonEncoder.getAnalogInRaw());
-    SmartDashboard.putNumber("TalonEncoder_V",m_TalonEncoder.getAnalogInVel());
+    SmartDashboard.putNumber("CanonEncoder_P",m_TalonEncoder.getAnalogInRaw());
+    SmartDashboard.putNumber("CanonEncoder_V",m_TalonEncoder.getAnalogInVel());
     
     SmartDashboard.putNumber("ShootEncoder/L_V",s_TalonEncoderLeft.getAnalogInVel());
     SmartDashboard.putNumber("ShootEncoder/R_V",s_TalonEncoderRight.getAnalogInVel());
  
     SmartDashboard.putNumber("SetshooterPoint",SetSpeedPoint);
 
-    //--------------------------------------------------------------------------------------
+    SmartDashboard.putNumber("CanonNowAngle",getCanonNow(m_TalonEncoder.getAnalogInRaw()));
+    SmartDashboard.putNumber("SetAngle", SetAngle);
 
-    
+    //--------------------------------------------------------------------------------------    
+    /*
     //シューターPointセット 
     if(m_xbox.getTriggerAxis(Hand.kRight) > 0.2){
       SetSpeedPoint = m_xbox.getTriggerAxis(Hand.kRight)  *SetShooterMagni;
@@ -228,8 +262,8 @@ public class Robot extends TimedRobot {
         s_TalonLeft.set(ControlMode.PercentOutput, SetShooterSpeed_P);
         s_TalonRight.set(ControlMode.PercentOutput, -SetShooterSpeed_P);
 
-       //センサーが二つとも入力してる時(0)だけバック回す
-        if(!BallSensorFront.get() && !BallSensorBack.get()){        
+       //前センサーが入力してる時(0)、後ろセンサーが入力してない時（1）だけバック回す
+        if(!BallSensorFront.get() && BallSensorBack.get()){        
           i_Intakeback.set(-SetIntakeBeltSpeed_P);
         }else{        
           i_Intakeback.set(0);
@@ -262,31 +296,82 @@ public class Robot extends TimedRobot {
       s_TalonLeft.set(ControlMode.Velocity, -SetSpeedPoint);
       s_TalonRight.set(ControlMode.Velocity, SetSpeedPoint);
     }
+    */
 
-    
 //--------------------------------------------------------------------------------------
 
+    /*
     //砲台
     if(-m_xbox.getY(Hand.kRight) > 0.2){
       m_Talon.set(0.1);
     }
+    */
+    
+    //PIDのテスト
+    if(m_xbox.getBButton()){      
+      SetAngle = 0;    
+    }
+    else if(m_xbox.getAButton()){      
+      SetAngle = -20;
+    }
+    else if(m_xbox.getXButton()){      
+      SetAngle = 50;
+    }
+    else{
+      
+    }
+    
+    //最後に動かす  
+    CanonPIDMove(SetAngle);   
 
   }
 
-
-
-
-  void S_TalonLeftPIDset(WPI_TalonSRX s_TalonLeft){
-    //s_TalonLeft.set(ControlMode.Velocity, SetSpeedPoint);
+  //砲台のモーターを回すPID制御(位置をSetPoint()で決める・重力オフセットをSetFeedForward()で決める)
+  void CanonPIDMove(double TargetAngle){    
+    //動くのはスイッチが両方押されてないときのみ
+    //if(!MaxUpSwitch.isFwdLimitSwitchClosed() && !MaxDownSwitch.isRevLimitSwitchClosed()){    
+      
+      m_Talon.set(ControlMode.Position, SetPoint(TargetAngle), 
+                  DemandType.ArbitraryFeedForward, SetFeedForward(getCanonNow(m_TalonEncoder.getAnalogInRaw())));
+      
+    //}else{
+    //  m_Talon.set(0);
+    //}
   }
+  
+  //---------------------------------------------------------------------
+  //砲台角度制御に関する計算式
+  
+    //現在の砲台の角度を計算 
+    //(角度の最大最小差分) ÷（エンコーダー値の最大最小差分) × (エンコーダー現在値 - 最小値) + (角度の最小値)
+    double getCanonNow(int CanonNowPoint){
+      double NowAngle;
+      NowAngle = CanonAngleError / CanonPointError * (CanonNowPoint - CanonMinPoint) + CanonMinAngle;
 
-  void S_TalonRightPIDset(WPI_TalonSRX s_TalonRight){
-    //s_TalonRight.set(ControlMode.Velocity, -SetSpeedPoint);
-  }
+      return NowAngle;
+    }
 
-  /**
-   * This function is called periodically during test mode.
-   */
+    //目標角度に合わせたPIDの目標値を計算
+    //(目標角度 - 最小角度) ×（エンコーダー値の最大最小差分) ÷ (角度の最大最小差分) + (0からの差分)
+    double SetPoint(double TargetAngle){
+      double Targetpoint;
+      Targetpoint = (TargetAngle - CanonMinAngle) * CanonMaxPoint / CanonMaxAngle + CanonMinPoint;
+
+      return  Targetpoint;
+    }
+
+    //目標角度に合わせた重力オフセットを計算
+    //(地面と水平な時の重力オフセット) × (cos目標角度)
+    double SetFeedForward(double TargetAngle){
+      double FeedForward;
+      FeedForward = CanonMaxOffset * Math.cos(Math.toRadians(TargetAngle));
+
+      return FeedForward;
+    }
+
+  //--------------------------------------------------------------------------------------
+
+
   @Override
   public void testPeriodic() {
   }

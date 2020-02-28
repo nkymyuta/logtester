@@ -27,13 +27,23 @@ public class PidGain{
 	 */
     public static final int kTimeoutMs = 30;
 
+    //shootPIDGain
+    public static final double shootkP  = 0.01;
+	public static final double shootkI  = 0.01;
+	public static final double shootkD  = 0;
+	public static final double shootkF  = 1023.0/7200.0;
+	public static final int shootkIzone = 300;
+    public static final double shootkPeakOutput = 1.00;
+    public static final double shootMaxIntegralAccumulator = 2000000;
 
-    public static final double kP  = 0.05;
-	public static final double kI  = 0;
-	public static final double kD  = 0;
-	public static final double kF  = 1023.0/7200.0;
-	public static final int kIzone = 300;
-	public static final double kPeakOutput = 1.00;
+    //CanonPIDGain
+    public static final double CanonkP  = 5;
+	public static final double CanonkI  = 0.05;
+	public static final double CanonkD  = 0;
+	public static final double CanonkF  = 0;
+	public static final int CanonkIzone = 0;
+    public static final double CanonkPeakOutput = 1.00;
+    public static final int CanonMaxIntegralAccumulator  = 200000;
 
 //----------------------------------------------------------------------
 
