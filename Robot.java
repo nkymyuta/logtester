@@ -65,7 +65,7 @@ public class Robot extends TimedRobot {
   //アームの可動域の角度＆エンコーダーからの値の最大
     public static final double CanonMaxAngle   = 80;
     public static final double CanonMinAngle   = -30;
-    public static final double CanonMaxPoint   = 496;   
+    public static final double CanonMaxPoint   = 500;   
     public static final double CanonMinPoint   = 167;
 
     public static final double CanonPointError = CanonMaxPoint - CanonMinPoint;
@@ -171,15 +171,15 @@ public class Robot extends TimedRobot {
 
     m_Talon.configNominalOutputForward(0,PidGain.kTimeoutMs);
     m_Talon.configNominalOutputReverse(0,PidGain.kTimeoutMs);
-    m_Talon.configPeakOutputForward(1.0,PidGain.kTimeoutMs);
-    m_Talon.configPeakOutputReverse(-1.0,PidGain.kTimeoutMs);
+    m_Talon.configPeakOutputForward(PidGain.CanonkPeakOutput, PidGain.kTimeoutMs);
+    m_Talon.configPeakOutputReverse(-PidGain.CanonkPeakOutput, PidGain.kTimeoutMs);
 
     m_Talon.config_kF(PidGain.kPIDLoopIdx, PidGain.CanonkF, PidGain.kTimeoutMs);
     m_Talon.config_kP(PidGain.kPIDLoopIdx, PidGain.CanonkP, PidGain.kTimeoutMs);
     m_Talon.config_kI(PidGain.kPIDLoopIdx, PidGain.CanonkI, PidGain.kTimeoutMs);
     m_Talon.config_kD(PidGain.kPIDLoopIdx, PidGain.CanonkD, PidGain.kTimeoutMs);
 
-    m_Talon.configMaxIntegralAccumulator(PidGain.kPIDLoopIdx,PidGain.shootMaxIntegralAccumulator);
+    m_Talon.configMaxIntegralAccumulator(PidGain.kPIDLoopIdx,PidGain.CanonMaxIntegralAccumulator);
 
   //-------------------------------------------------------------------------------------
   //変数宣言
@@ -224,8 +224,8 @@ public class Robot extends TimedRobot {
     //SmartDashboard.putBoolean("BallSensorFront",BallSensorFront.get());
     //SmartDashboard.putBoolean("BallSensorBack", BallSensorBack.get());
 
-    SmartDashboard.putBoolean("GetBumper/L",m_xbox.getBumper(Hand.kLeft));
-    SmartDashboard.putBoolean("GetBumper/R",m_xbox.getBumper(Hand.kRight));
+    //SmartDashboard.putBoolean("GetBumper/L",m_xbox.getBumper(Hand.kLeft));
+    //SmartDashboard.putBoolean("GetBumper/R",m_xbox.getBumper(Hand.kRight));
 
 
     SmartDashboard.putNumber("Xboxstick/X/L",m_xbox.getX(Hand.kLeft));
@@ -244,6 +244,7 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putNumber("CanonNowAngle",getCanonNow(m_TalonEncoder.getAnalogInRaw()));
     SmartDashboard.putNumber("SetAngle", SetAngle);
+    SmartDashboard.putNumber("getIA",m_Talon.getIntegralAccumulator());
 
     //SetFeedForward(getCanonNow(m_TalonEncoder.getAnalogInRaw()));
     //SmartDashboard.putNumber("FeedForwardMagni", Math.cos(Math.toRadians(getCanonNow(m_TalonEncoder.getAnalogInRaw()))));
@@ -314,6 +315,7 @@ public class Robot extends TimedRobot {
     }
     */
     
+    
     //PIDのテスト
     if(m_xbox.getBButton()){      
       canonPID_ON = true;
@@ -327,13 +329,24 @@ public class Robot extends TimedRobot {
       canonPID_ON = true;
       SetAngle = 30;
     }
-    else{
-      canonPID_ON = false;
-    }
+    
+    
     
     if(canonPID_ON == true){
     CanonPIDMove(SetAngle, getCanonNow(m_TalonEncoder.getAnalogInRaw()));
     }
+    
+
+    /*
+    if(-m_xbox.getY(Hand.kRight) > 0.2){
+      i_Intakeroller.set(m_xbox.getY(Hand.kRight) * 0.7);
+    }else if(m_xbox.getY(Hand.kRight) > 0.2){
+      i_Intakeroller.set(m_xbox.getY(Hand.kRight) * 0.7);
+    }else{
+      i_Intakeroller.set(0);
+    }
+    */
+
 
   }
 
@@ -345,6 +358,7 @@ public class Robot extends TimedRobot {
 
   }
 
+  
   //一番下に向ける
   void ChangeBasic(){
    

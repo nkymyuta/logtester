@@ -37,13 +37,13 @@ public class PidGain{
     public static final double shootMaxIntegralAccumulator = 2000000;
 
     //CanonPIDGain
-    public static final double CanonkP  = 10;
-	public static final double CanonkI  = 0;
-	public static final double CanonkD  = 25;
+    public static final double CanonkP  = 8;
+	public static final double CanonkI  = 0.01;
+	public static final double CanonkD  = 10;
 	public static final double CanonkF  = 0;
 	public static final int CanonkIzone = 0;
-    public static final double CanonkPeakOutput = 1.00;
-    public static final int CanonMaxIntegralAccumulator  = 200000;
+    public static final double CanonkPeakOutput = 1.0;
+    public static final double CanonMaxIntegralAccumulator  = 0.15 * 1023 / CanonkI;
 
 //----------------------------------------------------------------------
 
