@@ -4,7 +4,7 @@
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
-///////////////////////////////////////////////////
+
 package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -72,7 +72,7 @@ public class Robot extends TimedRobot {
     public static final double CanonAngleError = CanonMaxAngle - CanonMinAngle;
 
   //アームの重力オフセット最大値（角度が地面と平行であり、Cos = 1の時）
-    public static final double CanonMaxOffset = 0.13;
+    public static final double CanonMaxOffset = 0.18;
 
 
   //PIDの目標角度を代入する変数
@@ -179,6 +179,7 @@ public class Robot extends TimedRobot {
     m_Talon.config_kI(PidGain.kPIDLoopIdx, PidGain.CanonkI, PidGain.kTimeoutMs);
     m_Talon.config_kD(PidGain.kPIDLoopIdx, PidGain.CanonkD, PidGain.kTimeoutMs);
 
+    m_Talon.config_IntegralZone(PidGain.kPIDLoopIdx, PidGain.CanonkIzone);
     m_Talon.configMaxIntegralAccumulator(PidGain.kPIDLoopIdx,PidGain.CanonMaxIntegralAccumulator);
 
   //-------------------------------------------------------------------------------------
@@ -328,6 +329,9 @@ public class Robot extends TimedRobot {
     else if(m_xbox.getYButton()){      
       canonPID_ON = true;
       SetAngle = 30;
+    }else if(m_xbox.getXButton()){      
+      canonPID_ON = true;
+      SetAngle = 60;
     }
     
         
@@ -356,7 +360,7 @@ public class Robot extends TimedRobot {
                   DemandType.ArbitraryFeedForward, SetFeedForward(NowAngle));
 
   }
-
+//test
   
   //一番下に向ける
   void ChangeBasic(){

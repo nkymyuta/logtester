@@ -41,7 +41,7 @@ public class PidGain{
 	public static final double CanonkI  = 0.01;
 	public static final double CanonkD  = 10;
 	public static final double CanonkF  = 0;
-	public static final int CanonkIzone = 0;
+	public static final int CanonkIzone = (int)(0.5 * 1023 / CanonkP);
     public static final double CanonkPeakOutput = 1.0;
     public static final double CanonMaxIntegralAccumulator  = 0.15 * 1023 / CanonkI;
 
