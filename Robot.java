@@ -330,8 +330,7 @@ public class Robot extends TimedRobot {
       SetAngle = 30;
     }
     
-    
-    
+        
     if(canonPID_ON == true){
     CanonPIDMove(SetAngle, getCanonNow(m_TalonEncoder.getAnalogInRaw()));
     }
@@ -353,7 +352,7 @@ public class Robot extends TimedRobot {
   //砲台のモーターを回すPID制御(位置をSetPoint()で決める・重力オフセットをSetFeedForward()で決める)
   void CanonPIDMove(double TargetAngle, double NowAngle){      
       
-      m_Talon.set(ControlMode.Position, SetPoint(TargetAngle), 
+      m_Talon.set(ControlMode.Position, SetPoint(TargetAngle),
                   DemandType.ArbitraryFeedForward, SetFeedForward(NowAngle));
 
   }
@@ -363,7 +362,13 @@ public class Robot extends TimedRobot {
   void ChangeBasic(){
    
     while(!MaxDownSwitch.isRevLimitSwitchClosed()){
-      m_Talon.set(ControlMode.PercentOutput, -0.1);
+      if(getCanonNow(m_TalonEncoder.getAnalogInRaw()) > -5){
+        SmartDashboard.putNumber("High", getCanonNow(m_TalonEncoder.getAnalogInRaw()));
+        m_Talon.set(ControlMode.PercentOutput, -0.2);
+      }else{
+        SmartDashboard.putNumber("Low", getCanonNow(m_TalonEncoder.getAnalogInRaw()));
+        m_Talon.set(ControlMode.PercentOutput, -0.05);
+      }
     }
 
   }
